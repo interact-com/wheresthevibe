@@ -1,6 +1,6 @@
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
 import { Button, Card, Header, Row, Screen, Txt } from '@/components/ui';
@@ -37,11 +37,18 @@ export default function HostDashboard() {
   const option = BOOST_OPTIONS[picked]!;
   const hasRatings = ratings.some((r) => r.eventId === event.id);
 
-  const confirmBoost = () =>
-    Alert.alert('Boost this event?', `${option.hours} hours for ${rand(option.price)}. Prototype: no payment is taken.`, [
+  const confirmBoost = () => {
+    const message = `${option.hours} hours for ${rand(option.price)}. Prototype: no payment is taken.`;
+    // Alert buttons don't exist in the browser, so use the browser's confirm dialog there.
+    if (Platform.OS === 'web') {
+      if (globalThis.confirm?.(`Boost this event? ${message}`)) boostEvent(event.id, option);
+      return;
+    }
+    Alert.alert('Boost this event?', message, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Boost', onPress: () => boostEvent(event.id, option) },
     ]);
+  };
 
   return (
     <Screen footer={<Button title="Scan tickets at the door" icon="scan" kind="light" onPress={() => router.push({ pathname: '/host/[id]/scanner', params: { id: event.id } })} />}>

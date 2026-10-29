@@ -1,4 +1,4 @@
-import { Link } from 'expo-router';
+import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import type { VibeEvent } from '@/data/types';
@@ -16,29 +16,28 @@ export function EventCard({ event }: { event: VibeEvent }) {
   const { distanceTo, activeBoost } = useStore();
   const boosted = !!activeBoost(event.id);
   return (
-    <Link href={{ pathname: '/event/[id]', params: { id: event.id } }} asChild>
-      <Pressable
-        accessibilityRole="link"
-        style={({ pressed }) => [styles.card, boosted && styles.boosted, pressed && { opacity: 0.85 }]}
-      >
-        <View style={[styles.thumb, { backgroundColor: event.coverColor }]} />
-        <View style={{ flex: 1, gap: 4 }}>
-          <Row gap={6}>
-            {boosted ? <Badge label="Boosted" /> : null}
-            <Txt variant="caption" color={colors.muted}>
-              {km(distanceTo(event))}
-            </Txt>
-          </Row>
-          <Txt variant="label" style={{ fontSize: 15 }} numberOfLines={1}>
-            {event.title}
+    <Pressable
+      accessibilityRole="link"
+      onPress={() => router.push({ pathname: '/event/[id]', params: { id: event.id } })}
+      style={({ pressed }) => [styles.card, boosted && styles.boosted, pressed && { opacity: 0.85 }]}
+    >
+      <View style={[styles.thumb, { backgroundColor: event.coverColor }]} />
+      <View style={{ flex: 1, gap: 4 }}>
+        <Row gap={6}>
+          {boosted ? <Badge label="Boosted" /> : null}
+          <Txt variant="caption" color={colors.muted}>
+            {km(distanceTo(event))}
           </Txt>
-          <Txt variant="small" color={colors.muted} numberOfLines={1}>
-            {when(event.startsAt)} · {fromPrice(event)}
-            {event.hostRating ? ` · ★ ${event.hostRating.toFixed(1)}` : ` · ${event.category}`}
-          </Txt>
-        </View>
-      </Pressable>
-    </Link>
+        </Row>
+        <Txt variant="label" style={{ fontSize: 15 }} numberOfLines={1}>
+          {event.title}
+        </Txt>
+        <Txt variant="small" color={colors.muted} numberOfLines={1}>
+          {when(event.startsAt)} · {fromPrice(event)}
+          {event.hostRating ? ` · ★ ${event.hostRating.toFixed(1)}` : ` · ${event.category}`}
+        </Txt>
+      </View>
+    </Pressable>
   );
 }
 

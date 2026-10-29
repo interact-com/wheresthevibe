@@ -1,9 +1,9 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import MapView, { Marker, type MapStyleElement } from 'react-native-maps';
+import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
-import { EventCard, fromPrice } from '@/components/EventCard';
+import { EventCard } from '@/components/EventCard';
+import { EventMap } from '@/components/EventMap';
 import { Icon } from '@/components/Icon';
 import { Chip, IconButton, LogoMark, Row, Screen, Txt } from '@/components/ui';
 import type { VibeEvent } from '@/data/types';
@@ -72,41 +72,12 @@ export default function Discover() {
           ))}
         </ScrollView>
 
-        <View style={styles.mapWrap}>
-          <MapView
-            style={StyleSheet.absoluteFill}
-            initialRegion={{ ...location, latitudeDelta: 0.035, longitudeDelta: 0.035 }}
-            showsUserLocation
-            userInterfaceStyle="dark"
-            customMapStyle={Platform.OS === 'android' ? DARK_MAP : undefined}
-          >
-            {events.map((e) => {
-              const boosted = !!activeBoost(e.id);
-              return (
-                <Marker
-                  key={e.id}
-                  coordinate={{ latitude: e.latitude, longitude: e.longitude }}
-                  onPress={() => router.push({ pathname: '/event/[id]', params: { id: e.id } })}
-                  tracksViewChanges={false}
-                  anchor={{ x: 0.5, y: 1 }}
-                >
-                  {boosted ? (
-                    <View style={{ alignItems: 'center', gap: 4 }}>
-                      <View style={styles.boostLabel}>
-                        <Txt variant="caption" bold color={colors.accentInk} numberOfLines={1}>
-                          {e.title.split(' ').slice(0, 2).join(' ')} · {fromPrice(e).replace('from ', '')}
-                        </Txt>
-                      </View>
-                      <View style={[styles.dot, { width: 16, height: 16 }]} />
-                    </View>
-                  ) : (
-                    <View style={styles.dot} />
-                  )}
-                </Marker>
-              );
-            })}
-          </MapView>
-        </View>
+        <EventMap
+          events={events}
+          center={location}
+          isBoosted={(id) => !!activeBoost(id)}
+          onPressEvent={(id) => router.push({ pathname: '/event/[id]', params: { id } })}
+        />
 
         <Row style={{ justifyContent: 'space-between' }}>
           <Txt variant="heading">Near you</Txt>
@@ -141,17 +112,4 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   searchInput: { flex: 1, color: colors.text, fontFamily: fonts.body, fontSize: 15 },
-  mapWrap: { height: 260, borderRadius: radius.xl, overflow: 'hidden', borderWidth: 1, borderColor: colors.border },
-  dot: { width: 14, height: 14, borderRadius: 8, backgroundColor: colors.accent, borderWidth: 3, borderColor: colors.bg },
-  boostLabel: { backgroundColor: colors.accent, borderRadius: radius.sm, paddingHorizontal: 10, paddingVertical: 5, maxWidth: 200 },
 });
-
-// Muted dark style for Google Maps on Android (iOS uses Apple Maps' dark mode).
-const DARK_MAP: MapStyleElement[] = [
-  { elementType: 'geometry', stylers: [{ color: '#171a1a' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#8a9090' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#0e0f0f' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#262a2a' }] },
-  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0f1a1a' }] },
-];
