@@ -1,0 +1,7 @@
+# Netlify builds the web version of the app from this repo.
+[build]
+  command = "npx expo export --platform web"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
