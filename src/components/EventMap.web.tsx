@@ -38,7 +38,7 @@ export function EventMap({ events, center, isBoosted, onPressEvent }: EventMapPr
         );
       })}
       <Txt variant="caption" color={colors.muted} style={styles.note}>
-        Simplified map in the browser. Open in Expo Go for the real map.
+        Simplified map in the web preview. The phone app shows the real map.
       </Txt>
     </View>
   );

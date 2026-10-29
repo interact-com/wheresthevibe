@@ -1,6 +1,6 @@
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
 import { Button, Card, Header, Row, Screen, Txt } from '@/components/ui';
@@ -26,6 +26,7 @@ export default function HostDashboard() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { getEvent, tickets, activeBoost, boostEvent, ratings } = useStore();
   const [picked, setPicked] = useState(1);
+  const [confirming, setConfirming] = useState(false);
   const event = getEvent(id);
   if (!event) return <Redirect href="/host" />;
 
@@ -37,18 +38,6 @@ export default function HostDashboard() {
   const option = BOOST_OPTIONS[picked]!;
   const hasRatings = ratings.some((r) => r.eventId === event.id);
 
-  const confirmBoost = () => {
-    const message = `${option.hours} hours for ${rand(option.price)}. Prototype: no payment is taken.`;
-    // Alert buttons don't exist in the browser, so use the browser's confirm dialog there.
-    if (Platform.OS === 'web') {
-      if (globalThis.confirm?.(`Boost this event? ${message}`)) boostEvent(event.id, option);
-      return;
-    }
-    Alert.alert('Boost this event?', message, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Boost', onPress: () => boostEvent(event.id, option) },
-    ]);
-  };
 
   return (
     <Screen footer={<Button title="Scan tickets at the door" icon="scan" kind="light" onPress={() => router.push({ pathname: '/host/[id]/scanner', params: { id: event.id } })} />}>
@@ -81,7 +70,10 @@ export default function HostDashboard() {
                     key={o.hours}
                     accessibilityRole="radio"
                     accessibilityState={{ checked: on }}
-                    onPress={() => setPicked(i)}
+                    onPress={() => {
+                      setPicked(i);
+                      setConfirming(false);
+                    }}
                     style={[styles.option, on && { backgroundColor: colors.accent, borderColor: colors.accent }]}
                   >
                     <Txt variant="small" color={on ? colors.accentInk : colors.text}>
@@ -94,7 +86,26 @@ export default function HostDashboard() {
                 );
               })}
             </Row>
-            <Button title={`Boost for ${option.hours} hours · ${rand(option.price)}`} onPress={confirmBoost} style={{ minHeight: 48 }} />
+            {confirming ? (
+              <View style={{ gap: space.sm }}>
+                <Txt variant="small" color={colors.textSoft}>
+                  Boost for {option.hours} hours at {rand(option.price)}? Prototype: no payment is taken.
+                </Txt>
+                <Row>
+                  <Button title="Cancel" kind="secondary" style={{ flex: 1, minHeight: 48 }} onPress={() => setConfirming(false)} />
+                  <Button
+                    title="Confirm boost"
+                    style={{ flex: 1, minHeight: 48 }}
+                    onPress={() => {
+                      boostEvent(event.id, option);
+                      setConfirming(false);
+                    }}
+                  />
+                </Row>
+              </View>
+            ) : (
+              <Button title={`Boost for ${option.hours} hours · ${rand(option.price)}`} onPress={() => setConfirming(true)} style={{ minHeight: 48 }} />
+            )}
           </>
         )}
       </Card>

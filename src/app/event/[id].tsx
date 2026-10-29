@@ -54,7 +54,10 @@ export default function EventDetail() {
           <IconButton
             name="share"
             label="Share event"
-            onPress={() => Share.share({ message: `${event.title} — ${timeRange(event.startsAt, event.endsAt)}. Find it on Where’z The Vibe.` })}
+            onPress={() => {
+              // Sharing can be refused (e.g. in some browsers); nothing to do if so.
+              Share.share({ message: `${event.title} — ${timeRange(event.startsAt, event.endsAt)}. Find it on Where’z The Vibe.` }).catch(() => {});
+            }}
           />
         </SafeAreaView>
         <Txt variant="small" color={colors.muted}>
