@@ -13,7 +13,14 @@ npm install
 npm start
 ```
 
-Scan the QR code in the terminal with Expo Go (Android) or the Camera app (iOS). Your phone and computer must be on the same Wi‑Fi.
+Then open it on your phone:
+
+- **iPhone:** install **Expo Go** from the App Store, then scan the QR code in the terminal with the iPhone **Camera** app and tap the banner to open it in Expo Go.
+- **Android:** install **Expo Go** from the Play Store and scan the QR code from inside Expo Go.
+
+Your phone and computer must be on the same Wi‑Fi. If the phone can't connect (office Wi‑Fi often blocks it), run `npx expo start --tunnel` instead.
+
+You don't need a Mac to test on iPhone with Expo Go. A Mac (or EAS Build in the cloud) is only needed later for a standalone App Store build.
 
 - Sign in with any phone number and any 6 digits.
 - `npm run typecheck` checks types.

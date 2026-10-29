@@ -20,7 +20,7 @@ export default function TicketScreen() {
 
   const directions = () => {
     const { latitude: lat, longitude: lng } = event;
-    const url = Platform.OS === 'ios' ? `http://maps.apple.com/?daddr=${lat},${lng}` : `geo:${lat},${lng}?q=${lat},${lng}(${encodeURIComponent(event.title)})`;
+    const url = Platform.OS === 'ios' ? `https://maps.apple.com/?daddr=${lat},${lng}` : `geo:${lat},${lng}?q=${lat},${lng}(${encodeURIComponent(event.title)})`;
     Linking.openURL(url);
   };
 
