@@ -1,12 +1,13 @@
-import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, Share, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Icon, type IconName } from '@/components/Icon';
-import { Avatar, Badge, Button, Card, IconButton, Row, Screen, Txt } from '@/components/ui';
+import { Avatar, Badge, Button, Card, CenterMessage, IconButton, Row, Screen, Txt } from '@/components/ui';
 import { initials, km, rand, timeRange } from '@/lib/format';
 import { useStore } from '@/lib/store';
+import { useEvent } from '@/lib/useEvent';
 import { colors, radius, space } from '@/theme';
 
 function InfoRow({ icon, text }: { icon: IconName; text: string }) {
@@ -22,11 +23,14 @@ function InfoRow({ icon, text }: { icon: IconName; text: string }) {
 
 export default function EventDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getEvent, distanceTo, activeBoost } = useStore();
-  const event = getEvent(id);
-  const [tierId, setTierId] = useState(event?.tiers[0]?.id);
-  if (!event) return <Redirect href="/" />;
-  const tier = event.tiers.find((t) => t.id === tierId) ?? event.tiers[0]!;
+  const { distanceTo, isBoosted } = useStore();
+  const { event, loading } = useEvent(id);
+  const [tierId, setTierId] = useState<string | undefined>();
+  if (loading) return <CenterMessage title="Loading…" />;
+  if (!event) return <CenterMessage title="Event not found" body="It may have been cancelled." action={<Button title="Back to Discover" onPress={() => router.replace('/')} />} />;
+  const tier = event.tiers.find((t) => t.id === tierId) ?? event.tiers[0];
+  if (!tier) return <CenterMessage title="No tickets yet" body="The host hasn’t added tickets to this event." action={<Button title="Back" onPress={() => router.back()} />} />;
+  const ended = new Date(event.endsAt).getTime() < Date.now();
 
   return (
     <Screen
@@ -41,7 +45,8 @@ export default function EventDetail() {
             <Txt variant="heading">{rand(tier.price)}</Txt>
           </View>
           <Button
-            title={tier.price === 0 ? 'RSVP' : 'Get ticket'}
+            title={ended ? 'Event has ended' : tier.price === 0 ? 'RSVP' : 'Get ticket'}
+            disabled={ended}
             style={{ flex: 1 }}
             onPress={() => router.push({ pathname: '/checkout/[id]', params: { id: event.id, tier: tier.id } })}
           />
@@ -67,7 +72,7 @@ export default function EventDetail() {
 
       <View style={{ padding: space.xl, gap: space.lg }}>
         <Row gap={space.sm} style={{ flexWrap: 'wrap' }}>
-          {activeBoost(event.id) ? <Badge label="Boosted" /> : null}
+          {isBoosted(event) ? <Badge label="Boosted" /> : null}
           {event.tags.map((t) => (
             <Badge key={t} label={t} tone="neutral" />
           ))}
@@ -77,7 +82,7 @@ export default function EventDetail() {
         </Txt>
         <View style={{ gap: 10 }}>
           <InfoRow icon="calendar" text={timeRange(event.startsAt, event.endsAt)} />
-          <InfoRow icon="pin" text={`${event.venueName}, ${event.area} · ${km(distanceTo(event))}`} />
+          <InfoRow icon="pin" text={`${[event.venueName, event.area].filter(Boolean).join(", ")} · ${km(distanceTo(event))}`} />
           {event.hostRating ? <InfoRow icon="star" text={`Host’s past events: ${event.hostRating.toFixed(1)} vibe rating`} /> : null}
         </View>
 
@@ -97,14 +102,14 @@ export default function EventDetail() {
           {event.description}
         </Txt>
 
-        <View style={{ gap: space.sm }} accessibilityRole="radiogroup">
+        <View style={{ gap: space.sm }} role="radiogroup">
           {event.tiers.map((t) => {
             const selected = t.id === tier.id;
             return (
               <Pressable
                 key={t.id}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: selected }}
+                role="radio"
+                aria-checked={selected}
                 onPress={() => setTierId(t.id)}
                 style={[styles.tier, selected && { borderWidth: 2, borderColor: colors.accent }]}
               >

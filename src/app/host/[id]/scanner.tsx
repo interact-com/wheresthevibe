@@ -1,32 +1,50 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { Redirect, router, useLocalSearchParams } from 'expo-router';
-import { useRef, useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/Icon';
-import { Button, IconButton, Row, Txt } from '@/components/ui';
+import { Button, CenterMessage, ErrorText, IconButton, Row, Txt } from '@/components/ui';
 import { time } from '@/lib/format';
 import { useStore, type ScanResult } from '@/lib/store';
+import { useEvent } from '@/lib/useEvent';
 import { colors, fonts, radius, space } from '@/theme';
 
 export default function Scanner() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getEvent, scanTicket, tickets } = useStore();
+  const { scanTicket, ticketsFor } = useStore();
+  const { event, loading } = useEvent(id);
   const [permission, requestPermission] = useCameraPermissions();
   const [result, setResult] = useState<ScanResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [counts, setCounts] = useState({ inside: 0, sold: 0 });
   const [manual, setManual] = useState('');
   const locked = useRef(false);
-  const event = getEvent(id);
-  if (!event) return <Redirect href="/host" />;
 
-  const sold = tickets.filter((t) => t.eventId === event.id);
-  const inside = sold.filter((t) => t.scannedAt).length;
+  const loadCounts = useCallback(() => {
+    if (!id) return;
+    ticketsFor(id)
+      .then((t) => setCounts({ inside: t.filter((x) => x.scannedAt).length, sold: t.length }))
+      .catch(() => {});
+  }, [id, ticketsFor]);
+  useEffect(loadCounts, [loadCounts]);
 
-  const handle = (code: string) => {
+  if (loading) return <CenterMessage title="Loading…" />;
+  if (!event) return <CenterMessage title="Event not found" action={<Button title="Your events" onPress={() => router.replace('/host')} />} />;
+  const { inside, sold } = counts;
+
+  const handle = async (code: string) => {
     if (locked.current) return; // the camera fires many times per second
     locked.current = true;
-    setResult(scanTicket(event.id, code));
+    setError(null);
+    try {
+      setResult(await scanTicket(event.id, code));
+      loadCounts();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not check the ticket');
+      locked.current = false;
+    }
   };
   const next = () => {
     setResult(null);
@@ -41,7 +59,7 @@ export default function Scanner() {
         <Txt variant="heading">Door scanner</Txt>
         <View style={styles.counter}>
           <Txt variant="label">
-            {inside} / {sold.length} in
+            {inside} / {sold} in
           </Txt>
         </View>
       </Row>
@@ -64,6 +82,7 @@ export default function Scanner() {
 
       <View style={{ paddingHorizontal: space.lg, gap: space.md }}>
         {result ? <ResultCard result={result} /> : null}
+        <ErrorText message={error} />
         {result ? (
           <Button title="Scan next ticket" onPress={next} />
         ) : (

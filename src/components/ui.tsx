@@ -147,8 +147,9 @@ export function IconButton({ name, label, onPress, color = colors.text }: { name
 export function Chip({ label, selected, onPress }: { label: string; selected?: boolean; onPress?: () => void }) {
   return (
     <Pressable
-      accessibilityRole={onPress ? 'button' : 'text'}
-      accessibilityState={onPress ? { selected: !!selected } : undefined}
+      // Toggle chips are checkboxes to assistive tech, so "selected" is announced.
+      role={onPress ? 'checkbox' : undefined}
+      aria-checked={onPress ? !!selected : undefined}
       onPress={onPress}
       style={[styles.chip, selected ? { backgroundColor: colors.accent, borderColor: colors.accent } : null]}
     >
@@ -174,6 +175,33 @@ export function Avatar({ text, size = 40 }: { text: string; size?: number }) {
     <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: '#3A3F3F', alignItems: 'center', justifyContent: 'center' }}>
       <Text style={{ fontFamily: fonts.bold, fontSize: size * 0.33, color: colors.text }}>{text || '?'}</Text>
     </View>
+  );
+}
+
+/** Whole-screen message for loading, not found and similar states. */
+export function CenterMessage({ title, body, action }: { title: string; body?: string; action?: ReactNode }) {
+  return (
+    <SafeAreaView style={[styles.screen, { alignItems: 'center', justifyContent: 'center', padding: space.xl, gap: space.md }]}>
+      <Txt variant="heading" style={{ textAlign: 'center' }}>
+        {title}
+      </Txt>
+      {body ? (
+        <Txt color={colors.muted} style={{ textAlign: 'center' }}>
+          {body}
+        </Txt>
+      ) : null}
+      {action}
+    </SafeAreaView>
+  );
+}
+
+/** Inline error line under a form or button. */
+export function ErrorText({ message }: { message: string | null }) {
+  if (!message) return null;
+  return (
+    <Txt variant="small" color={colors.warn} accessibilityRole="alert" style={{ textAlign: 'center' }}>
+      {message}
+    </Txt>
   );
 }
 

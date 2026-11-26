@@ -1,10 +1,11 @@
-import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Button, Card, Header, Row, Screen, Txt } from '@/components/ui';
+import { Button, Card, CenterMessage, ErrorText, Header, Row, Screen, Txt } from '@/components/ui';
 import { rand, when } from '@/lib/format';
 import { useStore } from '@/lib/store';
+import { useEvent } from '@/lib/useEvent';
 import { colors, fonts, radius, space } from '@/theme';
 
 const METHODS = ['Card', 'Instant EFT', 'Phone wallet'] as const;
@@ -12,24 +13,29 @@ const MAX_PER_ORDER = 6;
 
 export default function Checkout() {
   const { id, tier: tierParam } = useLocalSearchParams<{ id: string; tier?: string }>();
-  const { getEvent, buyTickets } = useStore();
+  const { buyTickets } = useStore();
+  const { event, loading } = useEvent(id);
   const [qty, setQty] = useState(1);
   const [method, setMethod] = useState<(typeof METHODS)[number]>('Card');
   const [paying, setPaying] = useState(false);
-  const event = getEvent(id);
-  if (!event) return <Redirect href="/" />;
-  const tier = event.tiers.find((t) => t.id === tierParam) ?? event.tiers[0]!;
+  const [error, setError] = useState<string | null>(null);
+  if (loading) return <CenterMessage title="Loading…" />;
+  const tier = event?.tiers.find((t) => t.id === tierParam) ?? event?.tiers[0];
+  if (!event || !tier) return <CenterMessage title="Event not found" action={<Button title="Back to Discover" onPress={() => router.replace('/')} />} />;
   const free = tier.price === 0;
   const total = tier.price * qty;
 
-  const pay = () => {
+  const pay = async () => {
     setPaying(true);
-    // Real version: create a payment with the provider (Paystack / Yoco / PayFast),
-    // and the server issues tickets from its webhook once payment succeeds.
-    setTimeout(() => {
-      const [first] = buyTickets(event.id, tier.id, qty);
+    setError(null);
+    // Phase 2: take payment with the provider first; the server issues tickets once it confirms.
+    try {
+      const [first] = await buyTickets(event.id, tier.id, qty);
       router.replace({ pathname: '/ticket/[id]', params: { id: first!.id } });
-    }, 700);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not get tickets');
+      setPaying(false);
+    }
   };
 
   return (
@@ -39,6 +45,7 @@ export default function Checkout() {
           <Txt variant="caption" color={colors.muted} style={{ textAlign: 'center' }}>
             Tickets land in your app as QR codes. No printing.
           </Txt>
+          <ErrorText message={error} />
           <Button title={paying ? 'Processing…' : free ? 'Confirm RSVP' : `Pay ${rand(total)}`} disabled={paying} onPress={pay} />
         </>
       }
@@ -82,13 +89,13 @@ export default function Checkout() {
       </Row>
 
       {!free ? (
-        <View style={{ gap: space.sm }} accessibilityRole="radiogroup">
+        <View style={{ gap: space.sm }} role="radiogroup">
           <Txt variant="label">Pay with</Txt>
           {METHODS.map((m) => (
             <Pressable
               key={m}
-              accessibilityRole="radio"
-              accessibilityState={{ checked: m === method }}
+              role="radio"
+              aria-checked={m === method}
               onPress={() => setMethod(m)}
               style={[styles.method, m === method && { borderWidth: 2, borderColor: colors.accent }]}
             >
@@ -110,7 +117,7 @@ export default function Checkout() {
           <Txt variant="heading">{rand(total)}</Txt>
         </Row>
         <Txt variant="caption" color={colors.muted}>
-          Prototype: no real payment is taken.
+          Test version: no payment is taken yet.
         </Txt>
       </View>
     </Screen>

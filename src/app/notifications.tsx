@@ -22,6 +22,11 @@ export default function Notifications() {
   return (
     <Screen>
       <Header title="Notifications" />
+      {notifications.length === 0 ? (
+        <Txt color={colors.muted} style={{ textAlign: 'center', paddingVertical: space.xl }}>
+          Nothing yet. Boost alerts and “rate the vibe” reminders will show up here.
+        </Txt>
+      ) : null}
       {notifications.map((n) => {
         const highlight = n.kind === 'boost';
         return (

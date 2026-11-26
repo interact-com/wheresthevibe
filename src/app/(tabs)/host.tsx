@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 
 import { Icon } from '@/components/Icon';
-import { Button, Chip, Row, Screen, Txt } from '@/components/ui';
-import { MY_HOST_ID, TICKET_COMMISSION } from '@/data/sample';
+import { Button, Chip, ErrorText, Row, Screen, Txt } from '@/components/ui';
+import { TICKET_COMMISSION } from '@/data/sample';
 import type { Category } from '@/data/types';
 import { when } from '@/lib/format';
 import { useStore } from '@/lib/store';
@@ -39,15 +39,17 @@ function Field({ label, ...input }: TextInputProps & { label: string }) {
 }
 
 export default function Host() {
-  const { events, createEvent, location, tickets } = useStore();
-  const mine = events.filter((e) => e.hostId === MY_HOST_ID);
+  const { myEvents: mine, createEvent, location } = useStore();
   const [creating, setCreating] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [title, setTitle] = useState('');
   const [day, setDay] = useState(0);
   const [start, setStart] = useState('18:00');
   const [end, setEnd] = useState('23:00');
   const [venue, setVenue] = useState('');
+  const [area, setArea] = useState('');
   const [category, setCategory] = useState<Category>('Party');
   const [price, setPrice] = useState('0');
   const [capacity, setCapacity] = useState('100');
@@ -59,7 +61,7 @@ export default function Host() {
   const capNum = Number(capacity || 0);
   const valid = title.trim().length > 2 && venue.trim() && s && e && priceNum >= 0 && capNum > 0;
 
-  const publish = () => {
+  const publish = async () => {
     if (!valid || !s || !e) return;
     const startsAt = new Date();
     startsAt.setDate(startsAt.getDate() + DAYS[day]!.offset);
@@ -67,26 +69,39 @@ export default function Host() {
     const endsAt = new Date(startsAt);
     endsAt.setHours(e.h, e.min, 0, 0);
     if (endsAt <= startsAt) endsAt.setDate(endsAt.getDate() + 1); // runs past midnight
-    const created = createEvent({
+    if (endsAt.getTime() < Date.now()) {
+      setError('That time has already passed today. Pick a later time or another day.');
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    let created;
+    try {
+      created = await createEvent({
       title: title.trim(),
-      hostName: '[Your host name]',
-      hostId: MY_HOST_ID,
       category,
       tags: [category],
       startsAt: startsAt.toISOString(),
       endsAt: endsAt.toISOString(),
       venueName: venue.trim(),
-      area: 'Near you',
+      area: area.trim(),
       // Real version: a map pin picker. For now the event is placed where you are.
       latitude: location.latitude,
       longitude: location.longitude,
       description: description.trim() || 'More details coming soon.',
       tiers: [{ id: 'general', name: priceNum === 0 ? 'Free RSVP' : 'General', price: priceNum, capacity: capNum }],
       coverColor: COVERS[mine.length % COVERS.length]!,
-    });
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not publish the event');
+      setSaving(false);
+      return;
+    }
+    setSaving(false);
     setCreating(false);
     setTitle('');
     setVenue('');
+    setArea('');
     setDescription('');
     router.push({ pathname: '/host/[id]', params: { id: created.id } });
   };
@@ -98,7 +113,6 @@ export default function Host() {
           Your events
         </Txt>
         {mine.map((ev) => {
-          const sold = tickets.filter((t) => t.eventId === ev.id).length;
           return (
             <Pressable
               key={ev.id}
@@ -112,7 +126,7 @@ export default function Host() {
                   {ev.title}
                 </Txt>
                 <Txt variant="small" color={colors.muted}>
-                  {when(ev.startsAt)} · {sold} sold
+                  {when(ev.startsAt)} · {ev.status === 'cancelled' ? 'Cancelled' : ev.category}
                 </Txt>
               </View>
               <Txt variant="small" bold color={colors.accent}>
@@ -133,7 +147,8 @@ export default function Host() {
           <Txt variant="caption" color={colors.muted} style={{ textAlign: 'center' }}>
             We take {Math.round(TICKET_COMMISSION * 100)}% of ticket sales. Free events cost nothing.
           </Txt>
-          <Button title="Publish event" disabled={!valid} onPress={publish} />
+          <ErrorText message={error} />
+          <Button title={saving ? 'Publishing…' : 'Publish event'} disabled={!valid || saving} onPress={publish} />
         </>
       }
     >
@@ -169,6 +184,10 @@ export default function Host() {
         <Field label="Ends (HH:MM)" value={end} onChangeText={setEnd} keyboardType="numbers-and-punctuation" />
       </Row>
       <Field label="Venue or address" value={venue} onChangeText={setVenue} placeholder="Where is it?" />
+      <Field label="Area or suburb" value={area} onChangeText={setArea} placeholder="e.g. Braamfontein" />
+      <Txt variant="caption" color={colors.muted}>
+        For now the map pin goes where you are right now. A pin picker is coming.
+      </Txt>
       <View style={{ gap: 6 }}>
         <Txt variant="small" color={colors.muted}>
           Type of vibe

@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { EventCard } from '@/components/EventCard';
 import { EventMap } from '@/components/EventMap';
@@ -36,14 +36,18 @@ function matches(e: VibeEvent, filter: Filter, query: string) {
 }
 
 export default function Discover() {
-  const { nearbyEvents, activeBoost, location } = useStore();
+  const { nearbyEvents, isBoosted, getEvent, location, loading, refresh } = useStore();
   const [filter, setFilter] = useState<Filter>('All');
   const [query, setQuery] = useState('');
   const events = useMemo(() => nearbyEvents().filter((e) => matches(e, filter, query)), [nearbyEvents, filter, query]);
 
   return (
     <Screen scroll={false} contentStyle={{ padding: 0, paddingBottom: 0, gap: 0 }}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={() => refresh().catch(() => {})} tintColor={colors.accent} />}
+      >
         <Row style={{ justifyContent: 'space-between' }}>
           <Row gap={10}>
             <LogoMark />
@@ -75,7 +79,10 @@ export default function Discover() {
         <EventMap
           events={events}
           center={location}
-          isBoosted={(id) => !!activeBoost(id)}
+          isBoosted={(id) => {
+            const e = getEvent(id);
+            return !!e && isBoosted(e);
+          }}
           onPressEvent={(id) => router.push({ pathname: '/event/[id]', params: { id } })}
         />
 
@@ -90,7 +97,11 @@ export default function Discover() {
         ))}
         {events.length === 0 ? (
           <Txt color={colors.muted} style={{ textAlign: 'center', paddingVertical: space.xl }}>
-            No vibes match that yet. Try another filter.
+            {loading
+              ? 'Loading events…'
+              : filter === 'All' && !query
+                ? 'No events near you yet. Host the first one from the Host tab.'
+                : 'No vibes match that yet. Try another filter.'}
           </Txt>
         ) : null}
       </ScrollView>

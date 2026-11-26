@@ -13,8 +13,8 @@ export function fromPrice(e: VibeEvent) {
 }
 
 export function EventCard({ event }: { event: VibeEvent }) {
-  const { distanceTo, activeBoost } = useStore();
-  const boosted = !!activeBoost(event.id);
+  const { distanceTo, isBoosted } = useStore();
+  const boosted = isBoosted(event);
   return (
     <Pressable
       accessibilityRole="link"

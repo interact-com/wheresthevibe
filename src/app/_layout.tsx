@@ -15,7 +15,9 @@ const theme = {
 };
 
 function RootStack() {
-  const { signedIn } = useStore();
+  const { signedIn, ready } = useStore();
+  // Wait until we know whether someone is signed in, so returning users don't see sign-up flash by.
+  if (!ready) return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
   return (
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
       <Stack.Protected guard={signedIn}>

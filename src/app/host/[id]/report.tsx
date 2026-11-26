@@ -1,18 +1,31 @@
-import { Redirect, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { Card, Header, Row, Screen, Txt } from '@/components/ui';
+import { Button, Card, CenterMessage, Header, Row, Screen, Txt } from '@/components/ui';
 import { RATING_TAGS } from '@/data/sample';
+import type { Rating } from '@/data/types';
 import { useStore } from '@/lib/store';
+import { useEvent } from '@/lib/useEvent';
 import { colors, radius, space } from '@/theme';
 
 export default function VibeReport() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getEvent, ratings } = useStore();
-  const event = getEvent(id);
-  if (!event) return <Redirect href="/host" />;
+  const { ratingsFor } = useStore();
+  const { event, loading } = useEvent(id);
+  const [mine, setMine] = useState<Rating[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const mine = ratings.filter((r) => r.eventId === event.id);
+  useEffect(() => {
+    if (!id) return;
+    ratingsFor(id)
+      .then(setMine)
+      .catch((e) => setError(e instanceof Error ? e.message : 'Could not load ratings'));
+  }, [id, ratingsFor]);
+
+  if (loading || (!mine && !error)) return <CenterMessage title="Loading…" />;
+  if (!event || !mine) return <CenterMessage title={error ?? 'Event not found'} action={<Button title="Back" onPress={() => router.back()} />} />;
+
   const avg = mine.length ? mine.reduce((s, r) => s + r.stars, 0) / mine.length : 0;
   const counts = [5, 4, 3, 2, 1].map((star) => ({ star, count: mine.filter((r) => r.stars === star).length }));
   const max = Math.max(1, ...counts.map((c) => c.count));

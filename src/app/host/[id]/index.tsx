@@ -1,12 +1,14 @@
-import { Redirect, router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
-import { Button, Card, Header, Row, Screen, Txt } from '@/components/ui';
+import { Button, Card, CenterMessage, ErrorText, Header, Row, Screen, Txt } from '@/components/ui';
+import type { Ticket } from '@/data/types';
 import { BOOST_OPTIONS, TICKET_COMMISSION } from '@/data/sample';
 import { dayLabel, rand, time } from '@/lib/format';
 import { useStore } from '@/lib/store';
+import { useEvent } from '@/lib/useEvent';
 import { colors, radius, space } from '@/theme';
 
 function Stat({ label, value }: { label: string; value: string }) {
@@ -24,19 +26,41 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 export default function HostDashboard() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getEvent, tickets, activeBoost, boostEvent, ratings } = useStore();
+  const { isBoosted, boostEvent, ticketsFor, ratingsFor } = useStore();
+  const { event, loading } = useEvent(id);
   const [picked, setPicked] = useState(1);
   const [confirming, setConfirming] = useState(false);
-  const event = getEvent(id);
-  if (!event) return <Redirect href="/host" />;
+  const [boosting, setBoosting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sold, setSold] = useState<Ticket[]>([]);
+  const [hasRatings, setHasRatings] = useState(false);
 
-  const sold = tickets.filter((t) => t.eventId === event.id);
+  // Reload the guest list whenever this screen comes back into view (e.g. after scanning).
+  useFocusEffect(
+    useCallback(() => {
+      if (!id) return;
+      let cancelled = false;
+      Promise.all([ticketsFor(id), ratingsFor(id)])
+        .then(([t, r]) => {
+          if (cancelled) return;
+          setSold(t);
+          setHasRatings(r.length > 0);
+        })
+        .catch((e) => !cancelled && setError(e instanceof Error ? e.message : 'Could not load the guest list'));
+      return () => {
+        cancelled = true;
+      };
+    }, [id, ticketsFor, ratingsFor]),
+  );
+
+  if (loading) return <CenterMessage title="Loading…" />;
+  if (!event) return <CenterMessage title="Event not found" action={<Button title="Your events" onPress={() => router.replace('/host')} />} />;
+
   const capacity = event.tiers.reduce((n, t) => n + t.capacity, 0);
   const gross = sold.reduce((sum, t) => sum + (event.tiers.find((x) => x.id === t.tierId)?.price ?? 0), 0);
   const payout = gross * (1 - TICKET_COMMISSION);
-  const boost = activeBoost(event.id);
+  const boosted = isBoosted(event);
   const option = BOOST_OPTIONS[picked]!;
-  const hasRatings = ratings.some((r) => r.eventId === event.id);
 
 
   return (
@@ -53,9 +77,9 @@ export default function HostDashboard() {
           <Icon name="bolt" color={colors.accent} />
           <Txt variant="heading">Vibe Boost</Txt>
         </Row>
-        {boost ? (
+        {boosted ? (
           <Txt variant="small" color={colors.textSoft}>
-            Boosted until {time(boost.endsAt)} ({boost.hours} h). Your pin is bigger, you’re top of the list, and people nearby were notified.
+            Boosted until {time(event.boostedUntil!)}. Your pin is bigger, you’re top of the list, and people nearby were notified.
           </Txt>
         ) : (
           <>
@@ -68,8 +92,8 @@ export default function HostDashboard() {
                 return (
                   <Pressable
                     key={o.hours}
-                    accessibilityRole="radio"
-                    accessibilityState={{ checked: on }}
+                    role="radio"
+                    aria-checked={on}
                     onPress={() => {
                       setPicked(i);
                       setConfirming(false);
@@ -94,14 +118,24 @@ export default function HostDashboard() {
                 <Row>
                   <Button title="Cancel" kind="secondary" style={{ flex: 1, minHeight: 48 }} onPress={() => setConfirming(false)} />
                   <Button
-                    title="Confirm boost"
+                    title={boosting ? 'Boosting…' : 'Confirm boost'}
+                    disabled={boosting}
                     style={{ flex: 1, minHeight: 48 }}
-                    onPress={() => {
-                      boostEvent(event.id, option);
-                      setConfirming(false);
+                    onPress={async () => {
+                      setBoosting(true);
+                      setError(null);
+                      try {
+                        await boostEvent(event.id, option);
+                        setConfirming(false);
+                      } catch (e) {
+                        setError(e instanceof Error ? e.message : 'Could not boost the event');
+                      } finally {
+                        setBoosting(false);
+                      }
                     }}
                   />
                 </Row>
+                <ErrorText message={error} />
               </View>
             ) : (
               <Button title={`Boost for ${option.hours} hours · ${rand(option.price)}`} onPress={() => setConfirming(true)} style={{ minHeight: 48 }} />

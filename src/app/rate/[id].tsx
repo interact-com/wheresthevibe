@@ -1,24 +1,28 @@
-import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
-import { Button, Chip, IconButton, LogoMark, Row, Screen, Txt } from '@/components/ui';
+import { Button, CenterMessage, Chip, ErrorText, IconButton, LogoMark, Row, Screen, Txt } from '@/components/ui';
 import { RATING_TAGS } from '@/data/sample';
 import type { RatingTag } from '@/data/types';
 import { dayLabel } from '@/lib/format';
 import { useStore } from '@/lib/store';
+import { useEvent } from '@/lib/useEvent';
 import { colors, fonts, radius, space } from '@/theme';
 
 export default function RateVibe() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getEvent, rateEvent } = useStore();
+  const { rateEvent } = useStore();
+  const { event, loading } = useEvent(id);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [stars, setStars] = useState(0);
   const [tags, setTags] = useState<RatingTag[]>([]);
   const [comment, setComment] = useState('');
   const [sent, setSent] = useState(false);
-  const event = getEvent(id);
-  if (!event) return <Redirect href="/" />;
+  if (loading) return <CenterMessage title="Loading…" />;
+  if (!event) return <CenterMessage title="Event not found" action={<Button title="Back to Discover" onPress={() => router.replace('/')} />} />;
 
   const toggle = (t: RatingTag) => setTags((cur) => (cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]));
   const close = () => (router.canGoBack() ? router.back() : router.replace('/'));
@@ -42,14 +46,25 @@ export default function RateVibe() {
   return (
     <Screen
       footer={
+        <>
+        <ErrorText message={error} />
         <Button
-          title="Submit rating"
-          disabled={stars === 0}
-          onPress={() => {
-            rateEvent({ eventId: event.id, stars, tags, comment: comment.trim() });
-            setSent(true);
+          title={saving ? 'Saving…' : 'Submit rating'}
+          disabled={stars === 0 || saving}
+          onPress={async () => {
+            setSaving(true);
+            setError(null);
+            try {
+              await rateEvent({ eventId: event.id, stars, tags, comment: comment.trim() });
+              setSent(true);
+            } catch (e) {
+              setError(e instanceof Error ? e.message : 'Could not save your rating');
+            } finally {
+              setSaving(false);
+            }
           }}
         />
+        </>
       }
     >
       <Row style={{ justifyContent: 'flex-end' }}>
@@ -70,7 +85,7 @@ export default function RateVibe() {
             key={n}
             accessibilityRole="button"
             accessibilityLabel={`${n} out of 5`}
-            accessibilityState={{ selected: n === stars }}
+            aria-pressed={n === stars}
             onPress={() => setStars(n)}
             style={styles.star}
           >

@@ -42,3 +42,6 @@ yarn-error.*
 
 # Files delivered by Claude
 Claude outputs/
+
+# Supabase keys (see .env.example)
+.env

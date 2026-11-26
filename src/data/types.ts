@@ -38,6 +38,9 @@ export type VibeEvent = {
   coverColor: string;
   /** Host's average vibe rating across past events, if any. */
   hostRating?: number;
+  /** Set while a Vibe Boost is running. */
+  boostedUntil?: string;
+  status?: 'published' | 'cancelled';
 };
 
 export type Ticket = {

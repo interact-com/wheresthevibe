@@ -2,7 +2,6 @@ import { router, type Href } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Avatar, Row, Screen, Txt } from '@/components/ui';
-import { ME } from '@/data/sample';
 import { initials } from '@/lib/format';
 import { useStore } from '@/lib/store';
 import { colors, radius, space } from '@/theme';
@@ -32,18 +31,22 @@ function LinkRow({ label, href }: { label: string; href?: Href }) {
 }
 
 export default function Profile() {
-  const { tickets, ratings, interests, location, locationSource } = useStore();
+  const { tickets, myRatingsCount: rated, interests, location, locationSource, userName, email, signOut, mode } = useStore();
   const eventsBeen = new Set(tickets.filter((t) => t.scannedAt).map((t) => t.eventId)).size;
-  const rated = ratings.filter((r) => r.byMe).length;
 
   return (
     <Screen>
       <Row gap={14}>
-        <Avatar text={initials(ME.name) || 'ME'} size={64} />
+        <Avatar text={initials(userName) || 'ME'} size={64} />
         <View style={{ flex: 1, gap: 4 }}>
           <Txt variant="heading" style={{ fontSize: 20 }}>
-            {ME.name}
+            {userName}
           </Txt>
+          {email ? (
+            <Txt variant="small" color={colors.muted}>
+              {email}
+            </Txt>
+          ) : null}
           <Txt variant="small" color={colors.muted}>
             {interests.join(', ') || 'No interests picked yet'}
           </Txt>
@@ -64,7 +67,15 @@ export default function Profile() {
         <LinkRow label="Notifications" href="/notifications" />
         <LinkRow label="Switch to hosting" href="/host" />
         <LinkRow label="Privacy and data (POPIA)" />
+        <Pressable accessibilityRole="button" onPress={() => signOut()} style={({ pressed }) => [styles.linkRow, pressed && { opacity: 0.7 }]}>
+          <Txt color={colors.warn}>Sign out</Txt>
+        </Pressable>
       </View>
+      {mode === 'demo' ? (
+        <Txt variant="caption" color={colors.muted}>
+          Demo mode: sample data on this device only. Nothing is saved.
+        </Txt>
+      ) : null}
     </Screen>
   );
 }
