@@ -2,27 +2,39 @@
 
 A geosocial events app: find what’s happening near you, buy a QR ticket, get scanned in, rate the vibe. Hosts create events, sell tickets, boost them to nearby users and see feedback.
 
-This is the **MVP prototype**: an Expo (React Native) app with all the core screens working on sample data. There is no backend yet; everything lives in memory and resets when the app restarts.
+This is the **MVP prototype**, built with Expo (React Native) and running in the browser as a web app hosted on Netlify. All the core screens work on sample data. There is no backend yet; everything lives in memory and resets when the page reloads.
 
-## Run it
+## Use it on a phone
 
-You need Node.js 20+ and the **Expo Go** app on your phone.
+Open the Netlify link in Safari (iPhone) or Chrome (Android). To make it feel like an app, add it to your home screen:
+
+- **iPhone:** tap **Share → Add to Home Screen**. It then opens full screen, without the browser bars.
+- **Android:** tap the **⋮** menu → **Add to Home screen** / **Install app**.
+
+Sign in with any phone number and any 6 digits.
+
+## Deploy on Netlify
+
+Netlify builds the site from this repo using `netlify.toml` (build command `npx expo export --platform web`, output folder `dist`).
+
+1. In Netlify: **Add new site → Import an existing project → GitHub**, and pick this repo.
+2. Choose the branch to deploy. Netlify reads the build settings from `netlify.toml`, so leave them as they are.
+3. Click **Deploy**. Every push to that branch redeploys the site.
+
+To deploy by hand instead, run `npm run build:web` and drag the `dist` folder onto your site's **Deploys** page.
+
+## Run it on your computer
+
+You need Node.js 20+.
 
 ```bash
 npm install
-npm start
+npm run web
 ```
 
-Then open it on your phone:
+This opens the app at http://localhost:8081. Use your browser’s phone view (DevTools → device toolbar) to see it at phone size.
 
-- **iPhone:** install **Expo Go** from the App Store, then scan the QR code in the terminal with the iPhone **Camera** app and tap the banner to open it in Expo Go.
-- **Android:** install **Expo Go** from the Play Store and scan the QR code from inside Expo Go.
-
-Your phone and computer must be on the same Wi‑Fi. If the phone can't connect (office Wi‑Fi often blocks it), run `npx expo start --tunnel` instead.
-
-You don't need a Mac to test on iPhone with Expo Go. A Mac (or EAS Build in the cloud) is only needed later for a standalone App Store build.
-
-- Sign in with any phone number and any 6 digits.
+- `npm run build:web` builds the site into `dist`, the same way Netlify does.
 - `npm run typecheck` checks types.
 
 ## What works
@@ -33,9 +45,11 @@ You don't need a Mac to test on iPhone with Expo Go. A Mac (or EAS Build in the 
 | Host | Host tab → Create event → Dashboard (sales, payout after 7%, Vibe Boost, guest list) → Door scanner → Vibe report |
 | Other | Notifications, Profile |
 
-To test the door scanner on one phone, buy a ticket, copy its code from the ticket screen (e.g. `WTV-7K2Q-91`) and type it into the scanner’s code box. Scanning the same ticket twice shows “Already used”.
+To test the door scanner, buy a ticket on one phone and scan its QR with the scanner on another, or type the ticket’s code (e.g. `WTV-7K2Q-91`) into the scanner’s code box. Scanning the same ticket twice shows “Already used”.
 
-Location: the app asks for your location. If you’re more than 50 km from Johannesburg, it falls back to Braamfontein so the sample events show up.
+Location: the browser asks for your location. If you say no, or you’re more than 50 km from Johannesburg, the app uses Braamfontein so the sample events show up.
+
+The map uses [Leaflet](https://leafletjs.com) with free CARTO / OpenStreetMap tiles. That’s fine for a prototype; for a public launch, check CARTO’s usage terms or switch to a paid map provider.
 
 ## Project layout
 
@@ -62,6 +76,6 @@ src/
 2. **Payments.** Pick Paystack, Yoco or PayFast. Tickets should be issued by the server after a successful payment webhook, with a signed code in the QR.
 3. **Push notifications** for Vibe Boost alerts and “rate the vibe” prompts (Expo Notifications).
 4. **Event photos** and a map pin picker when creating an event.
-5. **App stores.** Google Maps needs an Android API key in `app.json` for release builds; build with EAS.
+5. **App stores (later).** The same code also builds as native iPhone and Android apps with EAS. Google Maps then needs an Android API key in `app.json`.
 
 Later features from the business case (video clips, live footage requests, messages, venue marketplace) are designed but not built yet.

@@ -19,7 +19,9 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "themeColor": "#0E0F0F",
+      "description": "Find events near you, buy QR tickets and rate the vibe."
     },
     "plugins": [
       [
